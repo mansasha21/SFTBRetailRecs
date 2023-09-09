@@ -66,7 +66,7 @@ def inference_candidates(
             table=candidates, encoder=encoders["item_id"], key="item_id", enc_key="item_id_enc"
         )
         candidates_by_model[model_name] = candidates
-        candidates.write_csv(path=schema.target_paths[f"data.candidates_{model_name}"])
+        candidates.write_csv(schema.target_paths[f"data.candidates_{model_name}"])
 
     candidates = union_candidates(list(candidates_by_model.values()))
     candidates.write_csv(schema.target_paths["data.candidates"])

@@ -38,7 +38,7 @@ def process_sentence(sent: str) -> str:
 
 def get_sentence_embedding(string: str) -> np.array:
     sent: tp.List[np.array] = []
-    
+    emb = {}
     for word in process_sentence(string).split():
         curr_emb: np.array = emb.get(word.lower())
 
