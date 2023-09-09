@@ -8,8 +8,12 @@ from implicit.nearest_neighbours import ItemItemRecommender
 from scipy.sparse import csr_matrix, find
 
 from data.utils import encoder2df
-from inference.utils import split_list_to_blocks
 
+
+def split_list_to_blocks(lst: tp.List[int], block_size: int):  # -> tp.Generator[tp.List[int]]:
+    for i in range(0, len(lst), block_size):
+        yield lst[i : i + block_size]
+        
 
 def alternating_least_squares_inference(
     model: AlternatingLeastSquares, uim: csr_matrix, user_idxs: tp.List[int], n_candidates_default: int = 100

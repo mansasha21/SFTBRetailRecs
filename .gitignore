@@ -121,7 +121,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+cache/
+export/
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -173,6 +174,10 @@ ipython_config.py
 .idea/**/dictionaries
 .idea/**/shelf
 
+*.jlb
+*.pq
+*.csv
+*.tsv
 # Generated files
 .idea/**/contentModel.xml
 
