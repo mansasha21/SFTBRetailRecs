@@ -56,40 +56,46 @@ def create_sparse_matrices(rpi: pl.DataFrame) -> Tuple[csr_matrix, csr_matrix, D
     return spmat_norm, spmat, encoders
 
 
-def get_cart_features(data: pl.DataFrame) -> pl.DataFrame:
-    data["price"] = data["price"] * data["quantity"]
-    receipt_info = data.groupby(by="receipt_id").agg(
-        {
-            "server_date": max,
-            "local_date": max,
-            "item_id": (list, len),
-            "name": list,
-            "price": [list, max, min, np.mean],
-            "quantity": [list, max, min, np.mean]
-        }
-    )
+def get_pairs_with_context(
+    train: pl.DataFrame,
+    val: pl.DataFrame
+) -> Tuple[pl.DataFrame, pl.DataFrame]:
+    def sample_neg(cart_items, items, probs):
+        neg_item = np.random.choice(items, p=probs)
+        while neg_item in cart_items:
+            neg_item = np.random.choice(items, p=probs)
+        return neg_item
 
-    receipt_info.columns = [
-        "server_date", "local_date", "receipt_items",
-        "cnt_items", "names", "prices", "max_price", "min_price",
-        "mean_price", "quantities", "max_quantity", "min_quantity",
-        "mean_quantity"
-    ]
-    
-    receipt_info["prices"] = np.array(receipt_info["prices"])
-    receipt_info["quantities"] = np.array(receipt_info["quantities"])
-    
-    receipt_info["percentile90_price"] = [np.percentile(p, 90) for p in receipt_info.prices]
-    receipt_info["percentile95_price"] = [np.percentile(p, 95) for p in receipt_info.prices]
-    receipt_info["percentile99_price"] = [np.percentile(p, 99) for p in receipt_info.prices]
-    
-    receipt_info["percentile90_quantity"] = [np.percentile(q, 90) for q in receipt_info.quantities]
-    receipt_info["percentile95_quantity"] = [np.percentile(q, 95) for q in receipt_info.quantities]
-    receipt_info["percentile99_quantity"] = [np.percentile(q, 99) for q in receipt_info.quantities]
-    
-    receipt_info["item_emb"] = [np.array([get_sentence_embedding(item) for item in ri]) for ri in receipt_info.names]
-    receipt_info["emb"] = [np.mean(item, axis=0) for item in receipt_info["item_emb"]]
+    full_li = pl.concat((train, val))
 
-    receipt_info["cart2item_dot"] = [[np.dot(cart, item) for item in items] for items, cart in zip(receipt_info["item_emb"], receipt_info["emb"])]
+    tmp = full_li["item_id"].value_counts().with_columns((pl.col("counts") / pl.col("counts").sum()).alias("prob"))
+    items = tmp["item_id"].to_numpy()
+    probs = tmp["prob"].to_numpy()
 
-    return receipt_info.reset_index().drop(columns=["names", "prices", "quantities"])
+    r2i_desc = full_li.groupby(["receipt_id", "item_id"]).agg(pl.col("quantity").sum())
+
+    non_empty_cart = r2i_desc.groupby(["receipt_id"]).agg(pl.col("item_id")).filter(pl.col("item_id").list.lengths() > 1)
+
+    context = []
+    positives = []
+    negatives = []
+    for cart_items in non_empty_cart["item_id"]:
+        items_np = np.asarray(cart_items)
+        mask = np.zeros(len(cart_items)).astype(bool)
+        pos_idx = np.random.randint(0, items_np.shape[0])
+        mask[pos_idx] = True
+
+        context.append(items_np[~mask])
+        positives.append(items_np[pos_idx])
+
+        neg_item = sample_neg(cart_items, items, probs)
+        negatives.append(neg_item)
+
+    res = pl.DataFrame({
+        "receipt_id": non_empty_cart["receipt_id"],
+        "context": context,
+        "positives": positives,
+        "negatives": negatives
+    })
+
+    return res, full_li
