@@ -1,4 +1,6 @@
 RANDOM_STATE = 2105
+N_CANDIDATES = 250
+
 
 bm25_config = {
     "K": 10,
