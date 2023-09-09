@@ -89,4 +89,4 @@ def get_cart_features(data: pl.DataFrame) -> pl.DataFrame:
     
     receipt_info["item_emb"] = [np.array([get_sentence_embedding(item) for item in ri]) for ri in receipt_info.names]
 
-    return receipt_info.reset_index().drop(columns=["names", "prices"])
+    return receipt_info.reset_index().drop(columns=["names", "prices", "quantities"])
