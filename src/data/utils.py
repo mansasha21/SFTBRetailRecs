@@ -88,5 +88,8 @@ def get_cart_features(data: pl.DataFrame) -> pl.DataFrame:
     receipt_info["percentile99_quantity"] = [np.percentile(q, 99) for q in receipt_info.quantities]
     
     receipt_info["item_emb"] = [np.array([get_sentence_embedding(item) for item in ri]) for ri in receipt_info.names]
+    receipt_info["emb"] = [np.mean(item, axis=0) for item in receipt_info["item_emb"]]
+
+    receipt_info["cart2item_dot"] = [[np.dot(cart, item) for item in items] for items, cart in zip(receipt_info["item_emb"], receipt_info["emb"])]
 
     return receipt_info.reset_index().drop(columns=["names", "prices", "quantities"])
