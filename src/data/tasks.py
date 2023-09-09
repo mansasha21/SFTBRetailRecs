@@ -48,10 +48,6 @@ def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
             quantities.rename({"quantity": "neg_quantity"}),
             left_on="negatives",
             right_on="item_id"
-        ).join(
-            names.rename({"name": "context_name"}),
-            left_on="context",
-            right_on="item_id"
         ).groupby("receipt_id").agg(
             [pl.col("context")] + \
             [pl.col(col).first() for col in ["positives", "negatives"]] + \
