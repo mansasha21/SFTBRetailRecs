@@ -17,6 +17,7 @@ def load():
 def train_candidate_models():
     pass
 
+
 @cli.command()
 def inference_candidates():
     pass
@@ -35,9 +36,11 @@ def train_ranker():
 def make_recommendations():
     pass
 
+
 @cli.command()
 def evaluate_common_metrics():
     pass
+
 
 @cli.command()
 def evaluate_candidates_metrics():
