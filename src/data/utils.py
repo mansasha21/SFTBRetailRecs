@@ -2,7 +2,13 @@ import typing as tp
 from typing import Dict, Tuple, Any
 
 import polars as pl
+import numpy as np
 from scipy.sparse import csr_matrix
+
+from proc_text import (
+    process_sentence,
+    get_sentence_embedding
+)
 
 
 def df2encoder(df: pl.DataFrame, key: str) -> tp.Dict[int, int]:
@@ -48,3 +54,39 @@ def create_sparse_matrices(rpi: pl.DataFrame) -> Tuple[csr_matrix, csr_matrix, D
     spmat_norm: csr_matrix = df2sparse(df=rpi, row="receipt_id_enc", col="item_id_enc", score="interaction_score_norm")
     spmat: csr_matrix = df2sparse(df=rpi, row="receipt_id_enc", col="item_id_enc", score="interaction_score")
     return spmat_norm, spmat, encoders
+
+
+def get_cart_features(data: pl.DataFrame) -> pl.DataFrame:
+    data["price"] = data["price"] * data["quantity"]
+    receipt_info = data.groupby(by="receipt_id").agg(
+        {
+            "server_date": max,
+            "local_date": max,
+            "item_id": (list, len),
+            "name": list,
+            "price": [list, max, min, np.mean],
+            "quantity": [list, max, min, np.mean]
+        }
+    )
+
+    receipt_info.columns = [
+        "server_date", "local_date", "receipt_items",
+        "cnt_items", "names", "prices", "max_price", "min_price",
+        "mean_price", "quantities", "max_quantity", "min_quantity",
+        "mean_quantity"
+    ]
+    
+    receipt_info["prices"] = np.array(receipt_info["prices"])
+    receipt_info["quantities"] = np.array(receipt_info["quantities"])
+    
+    receipt_info["percentile90_price"] = [np.percentile(p, 90) for p in receipt_info.prices]
+    receipt_info["percentile95_price"] = [np.percentile(p, 95) for p in receipt_info.prices]
+    receipt_info["percentile99_price"] = [np.percentile(p, 99) for p in receipt_info.prices]
+    
+    receipt_info["percentile90_quantity"] = [np.percentile(q, 90) for q in receipt_info.quantities]
+    receipt_info["percentile95_quantity"] = [np.percentile(q, 95) for q in receipt_info.quantities]
+    receipt_info["percentile99_quantity"] = [np.percentile(q, 99) for q in receipt_info.quantities]
+    
+    receipt_info["item_emb"] = [np.array([get_sentence_embedding(item) for item in ri]) for ri in receipt_info.names]
+
+    return receipt_info.reset_index().drop(columns=["names", "prices"])
