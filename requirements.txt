@@ -3,3 +3,5 @@ nltk >= 3.7
 polars >= 0.19.2
 pandas >= 2.0
 implicit >= 0.7.1
+typer
+pyarrow
