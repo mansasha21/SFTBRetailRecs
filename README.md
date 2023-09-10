@@ -10,7 +10,7 @@
 
 Собранный докер-образ можно запустить командой
 ```bash
-docker run -t recs data/cosmetic_train.tsv data/cosmetic_val.tsv data/cosmetic_val.tsv data/cosmetic_val_target.tsv
+docker run -t recs data/<train_data> data/<val_data> data/<infer_data> data/<target_data>
 ```
 Данная команда запустит обучение на полученных тренировочных данных, после чего запустить валидацию обученной модели
 
