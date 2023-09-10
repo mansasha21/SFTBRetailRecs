@@ -14,6 +14,7 @@ class DataSchema():
             "data.line_items": join(self.cache_dir, "line_items.csv"),
             "data.prices": join(self.cache_dir, "prices.csv"),
             "data.quantities": join(self.cache_dir, "quantities.csv"),
+            "data.popularity": join(self.cache_dir, "popularity.csv"),
             "data.rpi": join(self.cache_dir, "rpi.csv"),
             "data.candidates": join(self.cache_dir, "candidates.pq"),
             "data.candidates_tfidf": join(self.cache_dir, "candidates_tfidf.csv"),

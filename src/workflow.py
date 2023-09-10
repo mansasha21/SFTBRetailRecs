@@ -45,10 +45,10 @@ def inference_candidates(
     inference_data_path: str = Option(..., envvar="INFERENCE_DATA_PATH"),
 ):
     schema = DataSchema()
-    # spmat_norm = joblib.load(schema.target_paths["models.spmat_norm"])
-    # spmat = joblib.load(schema.target_paths["models.spmat"])
-    # models = joblib.load(schema.target_paths["models.implicit_models"])
-    # encoders = joblib.load(schema.target_paths["models.encoders"])
+    spmat_norm = joblib.load(schema.target_paths["models.spmat_norm"])
+    spmat = joblib.load(schema.target_paths["models.spmat"])
+    models = joblib.load(schema.target_paths["models.implicit_models"])
+    encoders = joblib.load(schema.target_paths["models.encoders"])
 
     df = (
         pl.read_csv(inference_data_path, separator="\t")
@@ -59,18 +59,18 @@ def inference_candidates(
             .agg(pl.col("item_id"))
     )
 
-    # user_indexes = get_receipt_indexes(receipt_ids=df["receipt_id"], encoder=encoders["receipt_id"])
+    user_indexes = get_receipt_indexes(receipt_ids=df["receipt_id"], encoder=encoders["receipt_id"])
 
-    # candidates_by_model = get_candidates(
-    #     models=models, uim=spmat, uim_norm=spmat_norm, user_indexes=user_indexes
-    # )
-    # for model_name, candidates in candidates_by_model.items():
-    #     candidates = decode(table=candidates, encoder=encoders["receipt_id"], key="receipt_id", enc_key="receipt_id_enc")
-    #     candidates = decode(
-    #         table=candidates, encoder=encoders["item_id"], key="item_id", enc_key="item_id_enc"
-    #     )
-    #     candidates_by_model[model_name] = candidates
-    #     candidates.write_csv(schema.target_paths[f"data.candidates_{model_name}"])
+    candidates_by_model = get_candidates(
+        models=models, uim=spmat, uim_norm=spmat_norm, user_indexes=user_indexes
+    )
+    for model_name, candidates in candidates_by_model.items():
+        candidates = decode(table=candidates, encoder=encoders["receipt_id"], key="receipt_id", enc_key="receipt_id_enc")
+        candidates = decode(
+            table=candidates, encoder=encoders["item_id"], key="item_id", enc_key="item_id_enc"
+        )
+        candidates_by_model[model_name] = candidates
+        candidates.write_csv(schema.target_paths[f"data.candidates_{model_name}"])
     
     popular_candidates = pd.read_csv(schema.target_paths["data.popular_products"])
     candidates_by_model = {}
@@ -93,25 +93,28 @@ def train_ranker(
     schema = DataSchema()
     train_li = pl.read_csv(train_data_path, separator="\t")
     val_li = pl.read_csv(val_data_path, separator="\t")
-    ds, prices, quantities = generate_features(train=train_li, val=val_li)
+    ds, prices, quantities, popularity = generate_features(train=train_li, val=val_li)
 
-    pos_ds = ds.select(["positives", "receipt_id", "pos_price", "pos_quantity", "context_price", "context_quantity"]).with_columns(pl.lit(1).alias("target")).rename({
+    pos_ds = ds.select(["positives", "receipt_id", "pos_price", "pos_quantity", "context_price", "context_quantity", "context_popularity", "pos_popularity"]).with_columns(pl.lit(1).alias("target")).rename({
         "positives": "item_id",
         "pos_price": "price",
         "pos_quantity": "quantity",
+        "pos_popularity": "popularity"
     })
-    neg_ds = ds.select(["negatives", "receipt_id", "neg_price", "neg_quantity", "context_price", "context_quantity"]).with_columns(pl.lit(0).alias("target")).rename({
+    neg_ds = ds.select(["negatives", "receipt_id", "neg_price", "neg_quantity", "context_price", "context_quantity", "context_popularity", "neg_popularity"]).with_columns(pl.lit(0).alias("target")).rename({
         "negatives": "item_id",
         "neg_price": "price",
         "neg_quantity": "quantity",
+        "neg_popularity": "popularity"
     })
     ds = pl.concat((pos_ds, neg_ds)).sort("receipt_id")
     
     ranker = CatBoostRanker(verbose=250)
-    ranker.fit(X=ds.select(["price", "quantity", "context_price", "context_quantity"]).to_pandas(), y=ds["target"].to_pandas(), group_id=ds["receipt_id"].to_pandas())
+    ranker.fit(X=ds.select(["price", "quantity", "popularity", "context_price", "context_quantity", "context_popularity"]).to_pandas(), y=ds["target"].to_pandas(), group_id=ds["receipt_id"].to_pandas())
     joblib.dump(ranker, schema.target_paths["models.ranker"])
     prices.write_csv(schema.target_paths["data.prices"])
     quantities.write_csv(schema.target_paths["data.quantities"])
+    popularity.write_csv(schema.target_paths["data.popularity"])
 
 
 @cli.command()
@@ -122,11 +125,12 @@ def make_recommendations(
     context_df = pl.read_csv(val_data_path, separator="\t").select(["receipt_id", "item_id"]).group_by("receipt_id").agg(pl.col("item_id").alias("context"))
     candidates = pl.read_csv(schema.target_paths["data.candidates"]).select(["receipt_id", "item_id"])
     prices = pl.read_csv(schema.target_paths["data.prices"])
+    popularity = pl.read_csv(schema.target_paths["data.popularity"])
     quantities = pl.read_csv(schema.target_paths["data.quantities"])
     ranker = joblib.load(schema.target_paths["models.ranker"])
 
-    context_with_features = join_context_features(context=context_df, prices=prices, quantities=quantities)
-    candidates_with_features = join_candidates_features(candidates=candidates, prices=prices, quantities=quantities)
+    context_with_features = join_context_features(context=context_df, prices=prices, quantities=quantities, popularity=popularity)
+    candidates_with_features = join_candidates_features(candidates=candidates, prices=prices, quantities=quantities, popularity=popularity)
     ds = context_with_features.join(candidates_with_features, on="receipt_id", how="left")
    
     predictions = {
@@ -136,7 +140,7 @@ def make_recommendations(
     }
     for receipt_id in tqdm(ds["receipt_id"].unique()):
         receipt_items = ds.filter(pl.col("receipt_id") == receipt_id)
-        score = ranker.predict(receipt_items.select(["price", "quantity", "context_price", "context_quantity"]).to_pandas())
+        score = ranker.predict(receipt_items.select(["price", "quantity", "popularity", "context_price", "context_quantity", "context_popularity"]).to_pandas())
         predictions["receipt_id"].append(receipt_id)
         predictions["item_id"].append(receipt_items["item_id"].to_list())
         predictions["score"].append(score)
