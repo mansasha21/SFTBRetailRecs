@@ -109,7 +109,7 @@ def train_ranker(
     })
     ds = pl.concat((pos_ds, neg_ds)).sort("receipt_id")
     
-    ranker = CatBoostRanker(verbose=250)
+    ranker = CatBoostRanker(n_estimators=5000, depth=10, verbose=250, loss_function="PairLogit")
     ranker.fit(X=ds.select(["price", "quantity", "popularity", "context_price", "context_quantity", "context_popularity"]).to_pandas(), y=ds["target"].to_pandas(), group_id=ds["receipt_id"].to_pandas())
     joblib.dump(ranker, schema.target_paths["models.ranker"])
     prices.write_csv(schema.target_paths["data.prices"])
