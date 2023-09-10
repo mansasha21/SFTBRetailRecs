@@ -32,11 +32,11 @@ docker run -t recs data/<train_data> data/<val_data> data/<infer_data> data/<tar
 `Python3`, `git`, `GitHub`, `Docker` - инструменты разработки  
 `LightGBM`, `CatBoost`, `Implicit`, `Polars` - фреймворки машинного обучения    
 
-# Сравнение моделей
+# Итоговый алгоритм
 
 Проводилось сравнение различных конфигураций моделей отбора товаров-кандидатов для предложения клиенту из семейства моделей коллаборативной фильтрации и матричной факторизации библиотеки Implicit в комбинации с моделью градиентного бустинга CatBoostRanker, выполняющей ранжирование отобранных кандидатов и выбор N лучших.
 
---В качестве устойчивого решения были выбраны 4 модели отбора кандидатов и 1 ранжирующая модель. 
+В качестве устойчивого решения были выбраны 4 модели отбора кандидатов и 1 ранжирующая модель. 
 <img width="903" alt="image" src="https://github.com/mansasha21/SFTBRetailRecs/assets/40700736/7b8cd230-540c-4e9d-8235-a6aedd71a1c3">
 
 
@@ -44,9 +44,9 @@ docker run -t recs data/<train_data> data/<val_data> data/<infer_data> data/<tar
 # Разработчики
 | Имя                  | Роль           | Контакт               |
 |----------------------|----------------|-----------------------|
-| Суржиков Александр   | Data Scientist | https://t.me/mansasha |
+| Суржиков Александр   | Lead           | https://t.me/mansasha |
 | ---                  | ---            | ---                   |
 | Назаренко Екатерина  | Data Scientist | https://t.me/cutttle  |
 | ---                  | ---            | ---                   |
-| Люльчак Павел        | Data Scientist | https://t.me/lllchak  |
+| Люльчак Павел        | ML Engineer    | https://t.me/lllchak  |
 | ---                  | ---            | ---                   |
