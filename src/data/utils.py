@@ -21,7 +21,7 @@ def encoder2df(encoder: tp.Dict[int, int], key: str, enc_key: str, dtype: type =
 
 def df2sparse(df: pl.DataFrame, row: str, col: str, score: str, normalize=False) -> csr_matrix:
     if normalize:
-        row_sums = df.groupby(row).agg(pl.col(score).sum().alias("sum"))
+        row_sums = df.group_by(row).agg(pl.col(score).sum().alias("sum"))
         df = df.join(row_sums, on=row)
         vls = (df[score] / df["sum"]).to_numpy()
     else:
@@ -72,9 +72,9 @@ def get_pairs_with_context(
     items = tmp["item_id"].to_numpy()
     probs = tmp["prob"].to_numpy()
 
-    r2i_desc = full_li.groupby(["receipt_id", "item_id"]).agg(pl.col("quantity").sum())
+    r2i_desc = full_li.group_by(["receipt_id", "item_id"]).agg(pl.col("quantity").sum())
 
-    non_empty_cart = r2i_desc.groupby(["receipt_id"]).agg(pl.col("item_id")).filter(pl.col("item_id").list.lengths() > 1)
+    non_empty_cart = r2i_desc.group_by(["receipt_id"]).agg(pl.col("item_id")).filter(pl.col("item_id").list.lengths() > 1)
 
     context = []
     positives = []

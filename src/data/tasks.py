@@ -22,8 +22,8 @@ def load_data(train_data_path: str, val_data_path: Optional[str] = None) -> Tupl
 def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
     mapping, full_li = get_pairs_with_context(train, val)
     popularity = full_li["item_id"].value_counts().with_columns((pl.col("counts") / pl.col("counts").max()).alias("popularity")).select(["item_id", "popularity"])
-    prices = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "price"]).groupby("item_id").agg(pl.col("price").max())
-    quantities = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "quantity"]).groupby("item_id").agg(pl.col("quantity").sum())
+    prices = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "price"]).group_by("item_id").agg(pl.col("price").max())
+    quantities = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "quantity"]).group_by("item_id").agg(pl.col("quantity").sum())
 
     return mapping.explode("context").join(
             prices.rename({"price": "context_price"}),
@@ -61,7 +61,7 @@ def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
             popularity.rename({"popularity": "neg_popularity"}),
             left_on="negatives",
             right_on="item_id"
-        ).groupby("receipt_id").agg(
+        ).group_by("receipt_id").agg(
             [pl.col("context")] + \
             [pl.col(col).first() for col in ["positives", "negatives"]] + \
             [pl.col(col).mean() for col in ["pos_price", "neg_price", "context_price", "context_popularity", "pos_popularity", "neg_popularity"]] + \
@@ -100,7 +100,7 @@ def join_context_features(context: pl.DataFrame, prices: pl.DataFrame, quantitie
             how="left",
             left_on="context",
             right_on="item_id"
-        ).groupby("receipt_id").agg(
+        ).group_by("receipt_id").agg(
             [pl.col("context")] + \
             [pl.col(col).mean() for col in ["context_price", "context_quantity", "context_popularity"]]
         )

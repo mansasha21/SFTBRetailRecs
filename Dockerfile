@@ -9,5 +9,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 RUN chmod +x recs.sh
+RUN chmod +x recom.sh
 RUN mkdir cache export
 ENTRYPOINT [ "./recs.sh" ]
+CMD [ "/recom.sh" ]

@@ -1,10 +1,9 @@
 #!/bin/bash
 
-export TRAIN_DATA_PATH="$1"
-export VAL_DATA_PATH="$2"
-export INFERENCE_DATA_PATH="$3"
-export TARGET_PATH="$4"
-
+export TRAIN_DATA_PATH="../data/cosmetic_train.tsv"
+export VAL_DATA_PATH="../data/cosmetic_val.tsv"
+export INFERENCE_DATA_PATH="../data/cosmetic_val.tsv"
+export TARGET_PATH="../data/cosmetic_val_target.tsv"
 
 ###################
 
