@@ -12,14 +12,16 @@ class DataSchema():
         self.target_paths = {
             # cache
             "data.line_items": join(self.cache_dir, "line_items.csv"),
+            "data.prices": join(self.cache_dir, "prices.csv"),
+            "data.quantities": join(self.cache_dir, "quantities.csv"),
             "data.rpi": join(self.cache_dir, "rpi.csv"),
             "data.candidates": join(self.cache_dir, "candidates.pq"),
-            "data.candidates_tfidf": join(self.cache_dir, "candidates_tfidf.pq"),
-            "data.candidates_cosine": join(self.cache_dir, "candidates_cosine.pq"),
-            "data.candidates_als": join(self.cache_dir, "candidates_als.pq"),
-            "data.candidates_bm25": join(self.cache_dir, "candidates_bm25.pq"),
-            "data.candidates_with_features": join(self.cache_dir, "candidates_with_features.pq"),
-            "data.recommendations": join(self.cache_dir, "recommendations.pq"),
+            "data.candidates_tfidf": join(self.cache_dir, "candidates_tfidf.csv"),
+            "data.candidates_cosine": join(self.cache_dir, "candidates_cosine.csv"),
+            "data.candidates_als": join(self.cache_dir, "candidates_als.csv"),
+            "data.candidates_bm25": join(self.cache_dir, "candidates_bm25.csv"),
+            "data.candidates_with_features": join(self.cache_dir, "candidates_with_features.csv"),
+            "data.recommendations": join(self.cache_dir, "recommendations.csv"),
 
             # export
             "models.spmat_norm": join(self.export_dir, "spmat_norm.jlb"),
