@@ -6,9 +6,13 @@
 - `git clone https://github.com/mansasha21/SFTBRetailRecs.git`
 
 # Запуск
+`Note:` Чтобы иметь возможность взаимодействия пайплайна обучения и пременения системы необходимо иметь каталог `data/` с необходимыми данными для обучения и инференса модели
+
+Собранный докер-образ можно запустить командой
 ```bash
-python train.py && python eval.py
+docker run -t recs data/cosmetic_train.tsv data/cosmetic_val.tsv data/cosmetic_val.tsv data/cosmetic_val_target.tsv
 ```
+Данная команда запустит обучение на полученных тренировочных данных, после чего запустить валидацию обученной модели
 
 # Используемое решение
 
