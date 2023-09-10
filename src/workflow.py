@@ -3,10 +3,12 @@ import joblib
 from datetime import datetime
 from typing import Dict, Optional
 
+from tqdm import tqdm
+from catboost import CatBoostRanker
 import polars as pl
 from typer import Option, Typer
 from configs.schema import DataSchema
-from data.tasks import load_data
+from data.tasks import load_data, join_candidates_features, join_context_features, generate_features
 from train.tasks import train_implicit_models
 from inference.tasks import get_candidates, union_candidates
 from inference.utils import decode, get_receipt_indexes
@@ -73,17 +75,67 @@ def inference_candidates(
 
 
 @cli.command()
-def candidates_join_features():
-    pass
+def train_ranker(
+    train_data_path: str = Option(..., envvar="TRAIN_DATA_PATH"),
+    val_data_path: Optional[str] = Option(default=None, envvar="VAL_DATA_PATH")
+    ):
+
+    schema = DataSchema()
+    train_li = pl.read_csv(train_data_path, separator="\t")
+    val_li = pl.read_csv(val_data_path, separator="\t")
+    ds, prices, quantities = generate_features(train=train_li, val=val_li)
+
+    pos_ds = ds.select(["positives", "receipt_id", "pos_price", "pos_quantity", "context_price", "context_quantity"]).with_columns(pl.lit(1).alias("target")).rename({
+        "positives": "item_id",
+        "pos_price": "price",
+        "pos_quantity": "quantity",
+    })
+    neg_ds = ds.select(["negatives", "receipt_id", "neg_price", "neg_quantity", "context_price", "context_quantity"]).with_columns(pl.lit(0).alias("target")).rename({
+        "negatives": "item_id",
+        "neg_price": "price",
+        "neg_quantity": "quantity",
+    })
+    ds = pl.concat((pos_ds, neg_ds)).sort("receipt_id")
+    
+    ranker = CatBoostRanker(verbose=250)
+    ranker.fit(X=ds.select(["price", "quantity", "context_price", "context_quantity"]).to_pandas(), y=ds["target"].to_pandas(), group_id=ds["receipt_id"].to_pandas())
+    joblib.dump(ranker, schema.target_paths["models.ranker"])
+    prices.write_csv(schema.target_paths["data.prices"])
+    quantities.write_csv(schema.target_paths["data.quantities"])
 
 
 @cli.command()
-def train_ranker():
-    pass
+def make_recommendations(
+    val_data_path: Optional[str] = Option(default=None, envvar="VAL_DATA_PATH")
+):
+    schema = DataSchema()
+    context_df = pl.read_csv(val_data_path, separator="\t").select(["receipt_id", "item_id"]).group_by("receipt_id").agg(pl.col("item_id").alias("context"))
+    candidates = pl.read_csv(schema.target_paths["data.candidates"]).select(["receipt_id", "item_id"])
+    prices = pl.read_csv(schema.target_paths["data.prices"])
+    quantities = pl.read_csv(schema.target_paths["data.quantities"])
+    ranker = joblib.load(schema.target_paths["models.ranker"])
 
-@cli.command()
-def make_recommendations():
-    pass
+    context_with_features = join_context_features(context=context_df, prices=prices, quantities=quantities)
+    candidates_with_features = join_candidates_features(candidates=candidates, prices=prices, quantities=quantities)
+    ds = context_with_features.join(candidates_with_features, on="receipt_id", how="left")
+   
+    predictions = {
+        "receipt_id": [],
+        "item_id": [],
+        "score": []
+    }
+    for receipt_id in tqdm(ds["receipt_id"].unique()):
+        receipt_items = ds.filter(pl.col("receipt_id") == receipt_id)
+        score = ranker.predict(receipt_items.select(["price", "quantity", "context_price", "context_quantity"]).to_pandas())
+        predictions["receipt_id"].append(receipt_id)
+        predictions["item_id"].append(receipt_items["item_id"].to_list())
+        predictions["score"].append(score)
+
+
+    predictions = pl.DataFrame(predictions)
+
+    pred_final = predictions.explode(["item_id", "score"]).sort(["receipt_id", "score"], descending=True).group_by("receipt_id").agg(pl.col("item_id").first())
+    pred_final.write_csv(schema.target_paths["data.recommendations"])
 
 
 @cli.command()

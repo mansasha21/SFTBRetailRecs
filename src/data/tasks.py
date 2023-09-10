@@ -21,8 +21,6 @@ def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
 
     prices = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "price"]).groupby("item_id").agg(pl.col("price").max())
     quantities = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "quantity"]).groupby("item_id").agg(pl.col("quantity").sum())
-    names = full_li.unique(subset=["item_id", "price", "name"]).select(["item_id", "name"]).groupby("item_id").agg(pl.col("name").max())
-    # names = names.with_columns(pl.col("name").apply(get_sentence_embedding).alias("emb"))
 
     return mapping.explode("context").join(
             prices.rename({"price": "context_price"}),
@@ -53,4 +51,31 @@ def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
             [pl.col(col).first() for col in ["positives", "negatives"]] + \
             [pl.col(col).mean() for col in ["pos_price", "neg_price", "context_price"]] + \
             [pl.col(col).mean() for col in ["pos_quantity", "neg_quantity", "context_quantity"]]
+        ), prices, quantities
+
+def join_candidates_features(candidates: pl.DataFrame, prices: pl.DataFrame, quantities: pl.DataFrame) -> pl.DataFrame:
+    return candidates.join(
+            prices,
+            how="left",
+            on="item_id"
+        ).join(
+            quantities, 
+            how="left",
+            on="item_id"
+        )
+
+def join_context_features(context: pl.DataFrame, prices: pl.DataFrame, quantities: pl.DataFrame) -> pl.DataFrame:
+    return context.explode("context").join(
+            prices.rename({"price": "context_price"}),
+            how="left",
+            left_on="context",
+            right_on="item_id"
+        ).join(
+            quantities.rename({"quantity": "context_quantity"}), 
+            how="left",
+            left_on="context",
+            right_on="item_id"
+        ).groupby("receipt_id").agg(
+            [pl.col("context")] + \
+            [pl.col(col).mean() for col in ["context_price", "context_quantity"]]
         )
