@@ -1,5 +1,3 @@
-<img width="903" alt="image" src="https://github.com/mansasha21/SFTBRetailRecs/assets/40700736/2fd67eee-c3b3-4923-ba43-84457386c20c"># SFTBRetailRecs
-
 Пайплайн для рекомендации товаров клиентам
 
 # Установка
