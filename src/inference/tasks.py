@@ -51,6 +51,6 @@ def split_list_to_blocks(lst: tp.List[int], block_size: int):  # -> tp.Generator
 
 def union_candidates(candidates: tp.Sequence[pl.DataFrame]) -> pl.DataFrame:
     union_candidates = (
-        pl.concat(candidates).select([pl.col("receipt_id"), pl.col("item_id"), pl.col("model_name")]).unique(maintain_order=False)
+        pl.concat(candidates).select([pl.col("receipt_id"), pl.col("item_id")]).unique(maintain_order=False)
     )
     return union_candidates

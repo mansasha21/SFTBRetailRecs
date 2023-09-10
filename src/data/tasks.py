@@ -12,9 +12,11 @@ def load_data(train_data_path: str, val_data_path: Optional[str] = None) -> Tupl
         full_li = pl.concat((train_li, val_li))
     else:
         full_li = train_li
+
+    popular_products = full_li["item_id"].value_counts().sort("counts", descending=True).head(25)[["item_id"]]
     rpi = prepare_rpi(full_li)
     spmat_norm, spmat, encoders = create_sparse_matrices(rpi)
-    return rpi, spmat, spmat_norm, encoders
+    return rpi, spmat, spmat_norm, encoders, popular_products
 
 
 def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:

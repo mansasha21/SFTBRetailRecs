@@ -22,6 +22,8 @@ class DataSchema():
             "data.candidates_bm25": join(self.cache_dir, "candidates_bm25.csv"),
             "data.candidates_with_features": join(self.cache_dir, "candidates_with_features.csv"),
             "data.recommendations": join(self.cache_dir, "recommendations.csv"),
+            "data.recommendations_10": join(self.cache_dir, "recommendations_10.pq"),
+            "data.popular_products": join(self.cache_dir, "popular_products.csv"),
 
             # export
             "models.spmat_norm": join(self.export_dir, "spmat_norm.jlb"),
