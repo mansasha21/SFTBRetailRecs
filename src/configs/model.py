@@ -1,5 +1,5 @@
 RANDOM_STATE = 2105
-N_CANDIDATES = 25
+N_CANDIDATES = 10
 
 
 bm25_config = {
@@ -17,9 +17,9 @@ cosine_config = {
 }
 
 als_config = {
-    "factors": 16,
+    "factors": 5,
     "regularization": 0.01,
-    "iterations": 25,
+    "iterations": 100,
     "random_state": RANDOM_STATE,       
 }
 

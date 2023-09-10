@@ -73,13 +73,11 @@ def inference_candidates(
         candidates.write_csv(schema.target_paths[f"data.candidates_{model_name}"])
     
     popular_candidates = pd.read_csv(schema.target_paths["data.popular_products"])
-    candidates_by_model = {}
     candidates_by_model["popular"] = pl.DataFrame(pd.DataFrame({
             "model_name": ["popular"] * df["receipt_id"].unique().shape[0],
             "receipt_id": df["receipt_id"].unique().to_list(),
             "item_id": [popular_candidates["item_id"].to_list()] * df["receipt_id"].unique().shape[0]
         }).explode("item_id"))
-    
     candidates = union_candidates(list(candidates_by_model.values()))
     candidates.write_csv(schema.target_paths["data.candidates"])
 
@@ -109,7 +107,7 @@ def train_ranker(
     })
     ds = pl.concat((pos_ds, neg_ds)).sort("receipt_id")
     
-    ranker = CatBoostRanker(n_estimators=5000, depth=10, verbose=250, loss_function="PairLogit")
+    ranker = CatBoostRanker(verbose=250, loss_function="PairLogit", random_seed=2105)
     ranker.fit(X=ds.select(["price", "quantity", "popularity", "context_price", "context_quantity", "context_popularity"]).to_pandas(), y=ds["target"].to_pandas(), group_id=ds["receipt_id"].to_pandas())
     joblib.dump(ranker, schema.target_paths["models.ranker"])
     prices.write_csv(schema.target_paths["data.prices"])
@@ -149,7 +147,7 @@ def make_recommendations(
     predictions = pl.DataFrame(predictions)
 
     pred_final = predictions.explode(["item_id", "score"]).sort(["receipt_id", "score"], descending=True).group_by("receipt_id").agg(pl.col("item_id").first())
-    pred_final.write_csv(schema.target_paths["data.recommendations"])
+    pred_final.write_csv(schema.target_paths["data.recommendations"], separator=";")
     pred_final_10 = predictions.explode(["item_id", "score"]).sort(["receipt_id", "score"], descending=True).group_by("receipt_id").agg(pl.col("item_id").head(10))
     pred_final_10.write_parquet(schema.target_paths["data.recommendations_10"])
 
