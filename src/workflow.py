@@ -139,13 +139,14 @@ def make_recommendations(
 
 
 @cli.command()
-def evaluate_common_metrics():
-    pass
-
-
-@cli.command()
-def evaluate_candidates_metrics():
-    pass
+def evaluate_common_metrics(
+    target_path: str = Option(..., envvar="TARGET_PATH"),
+):
+    schema = DataSchema()
+    val_target = pl.read_csv(target_path, separator='\t')
+    recs = pl.read_csv(schema.target_paths["data.recommendations"]).rename({"item_id":"pred_id"})
+    res = val_target.join(recs, on="receipt_id", how="left").filter(pl.col("item_id") == pl.col("pred_id"))
+    print("accuracy = ", res.shape[0] / val_target.shape[0])
 
 if __name__ == "__main__":
     cli()
