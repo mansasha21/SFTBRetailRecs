@@ -1,5 +1,5 @@
 RANDOM_STATE = 2105
-N_CANDIDATES = 10
+N_CANDIDATES = 25
 
 
 bm25_config = {

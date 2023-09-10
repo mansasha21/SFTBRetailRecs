@@ -13,4 +13,4 @@ PYTHONPATH=. python workflow.py train-ranker --train-data-path $TRAIN_DATA_PATH 
 PYTHONPATH=. python workflow.py make-recommendations --val-data-path $VAL_DATA_PATH
 PYTHONPATH=. python workflow.py evaluate-common-metrics --target-path $TARGET_PATH
 
-PYTHONPATH=. python main/prod_workflow.py evaluate-candidates-metrics 
+#PYTHONPATH=. python main/prod_workflow.py evaluate-candidates-metrics 

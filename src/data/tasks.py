@@ -21,7 +21,7 @@ def load_data(train_data_path: str, val_data_path: Optional[str] = None) -> Tupl
 
 def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
     mapping, full_li = get_pairs_with_context(train, val)
-
+    popularity = full_li["item_id"].value_counts().with_columns((pl.col("counts") / pl.col("counts").max()).alias("popularity")).select(["item_id", "popularity"])
     prices = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "price"]).groupby("item_id").agg(pl.col("price").max())
     quantities = full_li.unique(subset=["item_id", "price", "quantity"]).select(["item_id", "quantity"]).groupby("item_id").agg(pl.col("quantity").sum())
 
@@ -49,14 +49,27 @@ def generate_features(train: pl.DataFrame, val: pl.DataFrame) -> pl.DataFrame:
             quantities.rename({"quantity": "neg_quantity"}),
             left_on="negatives",
             right_on="item_id"
+        ).join(
+            popularity.rename({"popularity": "context_popularity"}),
+            left_on="context",
+            right_on="item_id"
+        ).join(
+            popularity.rename({"popularity": "pos_popularity"}),
+            left_on="positives",
+            right_on="item_id"
+        ).join(
+            popularity.rename({"popularity": "neg_popularity"}),
+            left_on="negatives",
+            right_on="item_id"
         ).groupby("receipt_id").agg(
             [pl.col("context")] + \
             [pl.col(col).first() for col in ["positives", "negatives"]] + \
-            [pl.col(col).mean() for col in ["pos_price", "neg_price", "context_price"]] + \
+            [pl.col(col).mean() for col in ["pos_price", "neg_price", "context_price", "context_popularity", "pos_popularity", "neg_popularity"]] + \
             [pl.col(col).mean() for col in ["pos_quantity", "neg_quantity", "context_quantity"]]
-        ), prices, quantities
+        ), prices, quantities, popularity
 
-def join_candidates_features(candidates: pl.DataFrame, prices: pl.DataFrame, quantities: pl.DataFrame) -> pl.DataFrame:
+
+def join_candidates_features(candidates: pl.DataFrame, prices: pl.DataFrame, quantities: pl.DataFrame, popularity: pl.DataFrame) -> pl.DataFrame:
     return candidates.join(
             prices,
             how="left",
@@ -65,9 +78,13 @@ def join_candidates_features(candidates: pl.DataFrame, prices: pl.DataFrame, qua
             quantities, 
             how="left",
             on="item_id"
+        ).join(
+            popularity, 
+            how="left",
+            on="item_id"
         )
 
-def join_context_features(context: pl.DataFrame, prices: pl.DataFrame, quantities: pl.DataFrame) -> pl.DataFrame:
+def join_context_features(context: pl.DataFrame, prices: pl.DataFrame, quantities: pl.DataFrame, popularity :pl.DataFrame) -> pl.DataFrame:
     return context.explode("context").join(
             prices.rename({"price": "context_price"}),
             how="left",
@@ -78,7 +95,12 @@ def join_context_features(context: pl.DataFrame, prices: pl.DataFrame, quantitie
             how="left",
             left_on="context",
             right_on="item_id"
+        ).join(
+            popularity.rename({"popularity": "context_popularity"}), 
+            how="left",
+            left_on="context",
+            right_on="item_id"
         ).groupby("receipt_id").agg(
             [pl.col("context")] + \
-            [pl.col(col).mean() for col in ["context_price", "context_quantity"]]
+            [pl.col(col).mean() for col in ["context_price", "context_quantity", "context_popularity"]]
         )
